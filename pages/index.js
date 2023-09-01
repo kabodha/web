@@ -11,12 +11,14 @@ export default function Index() {
   const [blobURL, setBlobURL] = useState("");
   const [transcription, setTranscription] = useState("");
   const [response, setResponse] = useState("");
+  const [audio, setAudio] = useState(null);
 
   const mediaRecorder = useRef(null);
 
   useEffect(() => {
     navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
       mediaRecorder.current = new MediaRecorder(stream);
+
       mediaRecorder.current.ondataavailable = async (e) => {
         const url = URL.createObjectURL(e.data);
 
@@ -40,6 +42,7 @@ export default function Index() {
               },
             }
           );
+
           setTranscription(response.data.text);
         } catch (error) {
           console.error(error);
@@ -84,12 +87,18 @@ export default function Index() {
       </Head>
 
       <div className={styles.controls}>
-        <button onClick={startRecording} type="button" disabled={record}>
-          Start
-        </button>
-        <button onClick={stopRecording} type="button" disabled={!record}>
-          Stop
-        </button>
+        <div
+          className={cx(styles.record, { [styles.active]: record })}
+          onClick={() => {
+            if (record) {
+              stopRecording();
+            } else {
+              startRecording();
+            }
+          }}
+          type="button"
+          disabled={!record}
+        />
       </div>
 
       <audio src={blobURL} />

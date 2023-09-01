@@ -18,13 +18,25 @@ $modularscale: (
     position: absolute;
     top: 0;
     left: 0;
+    padding: ms(-4);
+
+    .record {
+      width: ms(0);
+      height: ms(0);
+      background: var(--neutral-300);
+      border-radius: 50%;
+      cursor: pointer;
+
+      &.active {
+        background: var(--red-500);
+      }
+    }
   }
 
   .message {
     font-family: franklin;
     font-size: ms(3);
-    width: ms(16);
-    text-align: left;
+    max-width: ms(16);
 
     &.idle {
       color: var(--neutral-300);
