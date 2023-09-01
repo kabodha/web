@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     messages: [
       {
         role: "system",
-        content: `You are a friendly AI that responds to people's questions with brevity`,
+        content: `You are a friendly AI that responds to people's questions with brevity, but in full sentences`,
       },
       {
         role: "user",

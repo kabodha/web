@@ -6,6 +6,9 @@ import axios from "axios";
 import FormData from "form-data";
 import cx from "classnames";
 
+const voiceID = "E83lgkQqxj1opeAo4NBd";
+const xiApiKey = "7b66194ad92fbf68e973456def29f632";
+
 export default function Index() {
   const [record, setRecord] = useState(false);
   const [blobURL, setBlobURL] = useState("");
@@ -78,6 +81,36 @@ export default function Index() {
         });
     }
   }, [transcription]);
+
+  useEffect(() => {
+    if (response) {
+      axios
+        .post(
+          `https://api.elevenlabs.io/v1/text-to-speech/${voiceID}`,
+          {
+            text: response,
+            model_id: "eleven_multilingual_v2",
+          },
+          {
+            headers: {
+              accept: "audio/mpeg",
+              "xi-api-key": xiApiKey,
+              "Content-Type": "application/json",
+            },
+            responseType: "arraybuffer",
+          }
+        )
+        .then(async (response) => {
+          const audioBlob = response.data;
+          const audioUrl = window.URL.createObjectURL(
+            new Blob([audioBlob], { type: "audio/mpeg" })
+          );
+          setAudio(audioUrl);
+          const audio = new Audio(audioUrl);
+          audio.play();
+        });
+    }
+  }, [response]);
 
   return (
     <div className={styles.page}>

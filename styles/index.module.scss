@@ -36,7 +36,7 @@ $modularscale: (
   .message {
     font-family: franklin;
     font-size: ms(3);
-    max-width: ms(16);
+    width: ms(16);
 
     &.idle {
       color: var(--neutral-300);
