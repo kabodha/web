@@ -1,13 +1,16 @@
 import styles from "../styles/index.module.scss";
+import Head from "next/head";
 
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import FormData from "form-data";
+import cx from "classnames";
 
 export default function Index() {
   const [record, setRecord] = useState(false);
   const [blobURL, setBlobURL] = useState("");
   const [transcription, setTranscription] = useState("");
+  const [response, setResponse] = useState("");
 
   const mediaRecorder = useRef(null);
 
@@ -19,11 +22,9 @@ export default function Index() {
 
         setBlobURL(url);
 
-        // Create form data to send to the API
         let file = new Blob([e.data], { type: "audio/webm" });
         const model = "whisper-1";
 
-        // Send the audio file to the OpenAI Whisper API
         try {
           const formData = new FormData();
           formData.append("file", file, "audio.webm");
@@ -49,6 +50,8 @@ export default function Index() {
 
   const startRecording = () => {
     if (mediaRecorder.current && mediaRecorder.current.state !== "recording") {
+      setTranscription("");
+      setResponse("");
       mediaRecorder.current.start();
       setRecord(true);
     }
@@ -61,8 +64,25 @@ export default function Index() {
     }
   };
 
+  useEffect(() => {
+    if (transcription) {
+      axios
+        .post("/api/chat", {
+          message: transcription,
+        })
+        .then((response) => {
+          setResponse(response.data.message);
+        });
+    }
+  }, [transcription]);
+
   return (
     <div className={styles.page}>
+      <Head>
+        <title>kabodha</title>
+        <link rel="icon" href="/favicon.png" />
+      </Head>
+
       <div className={styles.controls}>
         <button onClick={startRecording} type="button" disabled={record}>
           Start
@@ -74,7 +94,10 @@ export default function Index() {
 
       <audio src={blobURL} />
 
-      <div className={styles.message}>{transcription}</div>
+      <div className={cx(styles.message, { [styles.idle]: response })}>
+        {transcription}
+      </div>
+      <div className={styles.message}>{response}</div>
     </div>
   );
 }
