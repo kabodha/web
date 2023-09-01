@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@primer/octicons-react": "^19.5.0",
+    "axios": "^1.5.0",
     "fp-ts": "^2.16.1",
+    "fs": "^0.0.1-security",
     "lorem-ipsum": "^2.0.8",
     "modularscale-sass": "^3.0.10",
     "next": "13.4.13",
