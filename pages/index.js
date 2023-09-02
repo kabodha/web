@@ -12,6 +12,7 @@ import OpenAI from 'openai';
 
 const voiceID = "E83lgkQqxj1opeAo4NBd";
 const xiApiKey = "7b66194ad92fbf68e973456def29f632";
+
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY,
   dangerouslyAllowBrowser: true
@@ -26,6 +27,8 @@ export default function Index() {
   const [chatCompleted, setChatCompleted] = useState(false);
   const [assistantMessage, setAssistantMessage] = useState('');
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [fullAssistantMessage, setFullAssistantMessage] = useState('');
+  
 
   const recentUserMessage = pipe(
     conversation,
@@ -108,24 +111,12 @@ export default function Index() {
   useEffect(() => {
     if (O.isSome(recentUserMessage) && currentTurn === "assistant") {
       const main = async () => {
-        const stream = await openai.chat.completions.create({
-          model: 'gpt-4',
+        const response = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
           messages: [{ role: 'user', content: recentUserMessage.value }],
-          stream: true,
         });
-        let assistantResponse = '';
-        for await (const part of stream) {
-          const content = part.choices[0]?.delta?.content || '';
-          assistantResponse += content;
-        }
-        setAssistantMessage(assistantResponse);
-        setConversation((prevConversation) => [
-          ...prevConversation,
-          {
-            role: "assistant",
-            content: assistantResponse,
-          },
-        ]);
+        const assistantResponse = response.choices[0]?.message?.content || '';
+        setFullAssistantMessage(assistantResponse); // Store the full message
         setChatCompleted(true);
       };
       main();
@@ -135,13 +126,13 @@ export default function Index() {
 
   useEffect(() => {
     if (
-      O.isSome(recentAssistantMessage) &&
-      currentTurn === "user" &&
+      O.isSome(recentUserMessage) &&
+      currentTurn === "assistant" &&
       chatCompleted &&
       !audioPlaying
     ) {
       setAudioPlaying(true);
-  
+
       const fetchData = async () => {
         const response = await fetch(
           `https://api.elevenlabs.io/v1/text-to-speech/${voiceID}/stream`,
@@ -153,8 +144,9 @@ export default function Index() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              text: assistantMessage,
+              text: fullAssistantMessage, // Use fullAssistantMessage here
               model_id: "eleven_monolingual_v1",
+              optimize_streaming_latency: 4,
               voice_settings: {
                 stability: 0.5,
                 similarity_boost: 0.5,
@@ -162,14 +154,15 @@ export default function Index() {
             }),
           }
         );
-  
+
         const reader = response.body.getReader();
         let chunks = [];
-        reader.read().then(function process({ done, value }) {
+        return reader.read().then(function process({ done, value }) {
           if (done) {
             const audioBlob = new Blob(chunks, { type: "audio/mpeg" });
             const audioUrl = window.URL.createObjectURL(audioBlob);
             const audio = new Audio(audioUrl);
+            audio.onplay = () => resolveAudioPlay(); // Resolve the promise when audio starts playing
             audio.play();
             setChatCompleted(false);
             setAudioPlaying(false);
@@ -179,187 +172,44 @@ export default function Index() {
           return reader.read().then(process);
         });
       };
-  
+
+      let resolveAudioPlay;
+      const audioPlayPromise = new Promise(resolve => {
+        resolveAudioPlay = resolve;
+      });
       const streamText = async () => {
-        for (let i = 0; i < assistantMessage.length; i++) {
-          setConversation((prevConversation) => [
-            ...prevConversation.slice(0, prevConversation.length - 1),
-            {
-              role: "assistant",
-              content: assistantMessage.slice(0, i + 1),
-            },
-          ]);
+        await audioPlayPromise;
+        for (let i = 0; i < fullAssistantMessage.length; i++) {
+          const partialMessage = fullAssistantMessage.slice(0, i + 1);
+          setConversation((prevConversation) => {
+            // If the last message is an assistant message, replace it with the new partial message
+            if (prevConversation.length > 0 && prevConversation[prevConversation.length - 1].role === "assistant") {
+              return [
+                ...prevConversation.slice(0, prevConversation.length - 1),
+                {
+                  role: "assistant",
+                  content: partialMessage,
+                },
+              ];
+            }
+            // Otherwise, append the new partial message to the conversation
+            else {
+              return [
+                ...prevConversation,
+                {
+                  role: "assistant",
+                  content: partialMessage,
+                },
+              ];
+            }
+          });
           await new Promise(resolve => setTimeout(resolve, 50)); // delay between each letter
         }
       };
-  
-      fetchData();
-      streamText();
+
+      Promise.all([fetchData(), streamText()]);
     }
-  }, [chatCompleted, currentTurn, recentAssistantMessage, audioPlaying]);
-
-  // Archive Code for Reference, can be deleted in future
-
-  // Code below does text completion streaming, letter by letter
-  // useEffect(() => {
-  //   if (O.isSome(recentUserMessage) && currentTurn === "assistant") {
-  //     const main = async () => {
-  //       const stream = await openai.chat.completions.create({
-  //         model: 'gpt-4',
-  //         messages: [{ role: 'user', content: recentUserMessage.value }],
-  //         stream: true,
-  //       });
-  //       let assistantResponse = '';
-  //       for await (const part of stream) {
-  //         const content = part.choices[0]?.delta?.content || '';
-  //         assistantResponse += content;
-  //         for (let i = 0; i < content.length; i++) {
-  //           setConversation((prevConversation) => [
-  //             ...prevConversation.slice(0, prevConversation.length - 1),
-  //             {
-  //               role: "assistant",
-  //               content: assistantResponse.slice(0, assistantResponse.length - content.length + i + 1),
-  //             },
-  //           ]);
-  //           await new Promise(resolve => setTimeout(resolve, 20)); // delay between each letter
-  //         }
-  //       }
-  //       setChatCompleted(true);
-  //     };
-  //     main();
-  //   }
-  // }, [conversation, currentTurn, recentUserMessage]);
-
-  // Code below executes text completion non streaming
-  // useEffect(() => {
-  //   if (O.isSome(recentUserMessage) && currentTurn === "assistant") {
-  //     axios
-  //       .post("/api/chat", {
-  //         conversation,
-  //       })
-  //       .then((response) => {
-  //         setConversation((prevConversation) => [
-  //           ...prevConversation,
-  //           {
-  //             role: "assistant",
-  //             content: response.data.message,
-  //           },
-  //         ]);
-
-  //         setChatCompleted(true);
-  //       });
-  //   }
-  // }, [conversation, currentTurn, recentUserMessage]);
-
-  // useEffect(() => {
-  //   if (O.isSome(recentUserMessage) && currentTurn === "assistant") {
-  //     const main = async () => {
-  //       const stream = await openai.chat.completions.create({
-  //         model: 'gpt-4',
-  //         messages: [{ role: 'user', content: recentUserMessage.value }],
-  //         stream: true,
-  //       });
-  //       let assistantResponse = '';
-  //       for await (const part of stream) {
-  //         const content = part.choices[0]?.delta?.content || '';
-  //         assistantResponse += content;
-  //       }
-  //       setAssistantMessage(assistantResponse);
-  //       setConversation((prevConversation) => [
-  //         ...prevConversation,
-  //         {
-  //           role: "assistant",
-  //           content: assistantResponse,
-  //         },
-  //       ]);
-  //       setChatCompleted(true);
-  //     };
-  //     main();
-  //   }
-  // }, [conversation, currentTurn, recentUserMessage]);
-
-  // Code below executes streaming eleven labs API
-  // useEffect(() => {
-  //   if (
-  //     O.isSome(recentAssistantMessage) &&
-  //     currentTurn === "user" &&
-  //     chatCompleted
-  //   ) {
-  //     const fetchData = async () => {
-  //       const response = await fetch(
-  //         `https://api.elevenlabs.io/v1/text-to-speech/${voiceID}/stream`,
-  //         {
-  //           method: "POST",
-  //           headers: {
-  //             accept: "audio/mpeg",
-  //             "xi-api-key": xiApiKey,
-  //             "Content-Type": "application/json",
-  //           },
-  //           body: JSON.stringify({
-  //             text: recentAssistantMessage.value,
-  //             model_id: "eleven_monolingual_v1",
-  //             voice_settings: {
-  //               stability: 0.5,
-  //               similarity_boost: 0.5,
-  //             },
-  //           }),
-  //         }
-  //       );
-  
-  //       const reader = response.body.getReader();
-  //       let chunks = [];
-  //       reader.read().then(function process({ done, value }) {
-  //         if (done) {
-  //           const audioBlob = new Blob(chunks, { type: "audio/mpeg" });
-  //           const audioUrl = window.URL.createObjectURL(audioBlob);
-  //           const audio = new Audio(audioUrl);
-  //           audio.play();
-  //           setChatCompleted(false);
-  //           return;
-  //         }
-  //         chunks.push(value);
-  //         return reader.read().then(process);
-  //       });
-  //     };
-  
-  //     fetchData();
-  //   }
-  // }, [chatCompleted, currentTurn, recentAssistantMessage]);
-
-  // Code below tests eleven labs non streaming API
-  // useEffect(() => {
-  //   if (
-  //     O.isSome(recentAssistantMessage) &&
-  //     currentTurn === "user" &&
-  //     chatCompleted
-  //   ) {
-  //     axios
-  //       .post(
-  //         `https://api.elevenlabs.io/v1/text-to-speech/${voiceID}`,
-  //         {
-  //           text: recentAssistantMessage.value,
-  //           model_id: "eleven_multilingual_v2",
-  //         },
-  //         {
-  //           headers: {
-  //             accept: "audio/mpeg",
-  //             "xi-api-key": xiApiKey,
-  //             "Content-Type": "application/json",
-  //           },
-  //           responseType: "arraybuffer",
-  //         }
-  //       )
-  //       .then(async (response) => {
-  //         const audioBlob = response.data;
-  //         const audioUrl = window.URL.createObjectURL(
-  //           new Blob([audioBlob], { type: "audio/mpeg" })
-  //         );
-  //         const audio = new Audio(audioUrl);
-  //         audio.play();
-  //         setChatCompleted(false);
-  //       });
-  //   }
-  // }, [chatCompleted, currentTurn, recentAssistantMessage]);
+  }, [chatCompleted, currentTurn, recentUserMessage, audioPlaying, fullAssistantMessage]);
 
   return (
     <div className={styles.page}>
