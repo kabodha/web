@@ -172,6 +172,9 @@ export default function Index() {
           type="button"
           disabled={!record}
         />
+        <div className={styles.copy}>
+          {record ? "Listening" : "Hold to speak"}
+        </div>
       </div>
 
       <audio src={blobURL} />

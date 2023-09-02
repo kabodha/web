@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const { conversation } = req.body;
 
   const suggestionResponse = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: "gpt-3.5-turbo",
     temperature: 0,
     messages: [
       {
