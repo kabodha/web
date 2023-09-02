@@ -14,12 +14,14 @@
     "classnames": "^2.3.2",
     "fp-ts": "^2.16.1",
     "fs": "^0.0.1-security",
+    "immer": "^10.0.2",
     "lorem-ipsum": "^2.0.8",
     "modularscale-sass": "^3.0.10",
     "next": "13.4.13",
     "openai": "^4.4.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-use": "^17.4.0",
     "sass": "^1.64.2"
   },
   "devDependencies": {

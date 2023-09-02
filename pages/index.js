@@ -1,24 +1,62 @@
 import styles from "../styles/index.module.scss";
 import Head from "next/head";
-
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import FormData from "form-data";
 import cx from "classnames";
+import { current, produce } from "immer";
+import { pipe } from "fp-ts/lib/function";
+import * as RAR from "fp-ts/ReadonlyArray";
+import * as O from "fp-ts/Option";
+import { useEffectOnce } from "react-use";
 
-const voiceID = "E83lgkQqxj1opeAo4NBd";
-const xiApiKey = "7b66194ad92fbf68e973456def29f632";
+const voiceID = "Yko7PKHZNXotIFUBG7I9";
+const xiApiKey = "51f9195713d809aeb79898f8ab0aedb1";
 
 export default function Index() {
-  const [record, setRecord] = useState(false);
-  const [blobURL, setBlobURL] = useState("");
-  const [transcription, setTranscription] = useState("");
-  const [response, setResponse] = useState("");
-  const [audio, setAudio] = useState(null);
-
   const mediaRecorder = useRef(null);
 
-  useEffect(() => {
+  const [record, setRecord] = useState(false);
+  const [blobURL, setBlobURL] = useState("");
+  const [conversation, setConversation] = useState([]);
+  const [chatCompleted, setChatCompleted] = useState(false);
+
+  const recentUserMessage = pipe(
+    conversation,
+    RAR.findLast((message) => message.role === "user"),
+    O.map((message) => message.content)
+  );
+
+  const recentAssistantMessage = pipe(
+    conversation,
+    RAR.findLast((message) => message.role === "assistant"),
+    O.map((message) => message.content)
+  );
+
+  const currentTurn = pipe(
+    conversation,
+    RAR.last,
+    O.map((message) => (message.role === "user" ? "assistant" : "user")),
+    O.getOrElse(() => "user")
+  );
+
+  console.log(conversation);
+
+  const startRecording = () => {
+    if (mediaRecorder.current && mediaRecorder.current.state !== "recording") {
+      mediaRecorder.current.start();
+      setRecord(true);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder.current && mediaRecorder.current.state === "recording") {
+      mediaRecorder.current.stop();
+      setRecord(false);
+    }
+  };
+
+  useEffectOnce(() => {
     navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
       mediaRecorder.current = new MediaRecorder(stream);
 
@@ -35,7 +73,7 @@ export default function Index() {
           formData.append("file", file, "audio.webm");
           formData.append("model", model);
 
-          const response = await axios.post(
+          const whisperResponse = await axios.post(
             "https://api.openai.com/v1/audio/transcriptions",
             formData,
             {
@@ -46,49 +84,51 @@ export default function Index() {
             }
           );
 
-          setTranscription(response.data.text);
+          setConversation((prevConversation) => [
+            ...prevConversation,
+            {
+              role: "user",
+              content: whisperResponse.data.text,
+            },
+          ]);
         } catch (error) {
           console.error(error);
         }
       };
     });
-  }, []);
-
-  const startRecording = () => {
-    if (mediaRecorder.current && mediaRecorder.current.state !== "recording") {
-      setTranscription("");
-      setResponse("");
-      mediaRecorder.current.start();
-      setRecord(true);
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder.current && mediaRecorder.current.state === "recording") {
-      mediaRecorder.current.stop();
-      setRecord(false);
-    }
-  };
+  });
 
   useEffect(() => {
-    if (transcription) {
+    if (O.isSome(recentUserMessage) && currentTurn === "assistant") {
       axios
         .post("/api/chat", {
-          message: transcription,
+          conversation,
         })
         .then((response) => {
-          setResponse(response.data.message);
+          setConversation((prevConversation) => [
+            ...prevConversation,
+            {
+              role: "assistant",
+              content: response.data.message,
+            },
+          ]);
+
+          setChatCompleted(true);
         });
     }
-  }, [transcription]);
+  }, [conversation, currentTurn, recentUserMessage]);
 
   useEffect(() => {
-    if (response) {
+    if (
+      O.isSome(recentAssistantMessage) &&
+      currentTurn === "user" &&
+      chatCompleted
+    ) {
       axios
         .post(
           `https://api.elevenlabs.io/v1/text-to-speech/${voiceID}`,
           {
-            text: response,
+            text: recentAssistantMessage.value,
             model_id: "eleven_multilingual_v2",
           },
           {
@@ -105,12 +145,12 @@ export default function Index() {
           const audioUrl = window.URL.createObjectURL(
             new Blob([audioBlob], { type: "audio/mpeg" })
           );
-          setAudio(audioUrl);
           const audio = new Audio(audioUrl);
           audio.play();
+          setChatCompleted(false);
         });
     }
-  }, [response]);
+  }, [chatCompleted, currentTurn, recentAssistantMessage]);
 
   return (
     <div className={styles.page}>
@@ -122,24 +162,33 @@ export default function Index() {
       <div className={styles.controls}>
         <div
           className={cx(styles.record, { [styles.active]: record })}
-          onClick={() => {
-            if (record) {
-              stopRecording();
-            } else {
-              startRecording();
-            }
-          }}
           type="button"
           disabled={!record}
+          onMouseDown={() => {
+            startRecording();
+          }}
+          onMouseUp={() => {
+            stopRecording();
+          }}
         />
       </div>
 
       <audio src={blobURL} />
 
-      <div className={cx(styles.message, { [styles.idle]: response })}>
-        {transcription}
-      </div>
-      <div className={styles.message}>{response}</div>
+      {O.isSome(recentUserMessage) && (
+        <div
+          className={cx(styles.message, {
+            [styles.idle]:
+              O.isSome(recentAssistantMessage) && currentTurn === "user",
+          })}
+        >
+          {recentUserMessage.value}
+        </div>
+      )}
+
+      {O.isSome(recentAssistantMessage) && currentTurn === "user" && (
+        <div className={styles.message}>{recentAssistantMessage.value}</div>
+      )}
     </div>
   );
 }

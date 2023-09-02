@@ -17,7 +17,7 @@ $modularscale: (
   .controls {
     position: absolute;
     top: 0;
-    left: 0;
+    right: 0;
     padding: ms(-4);
 
     .record {
@@ -29,6 +29,8 @@ $modularscale: (
 
       &.active {
         background: var(--red-500);
+        transform: scale(1.1);
+        transition: transform 0.1s ease-in-out;
       }
     }
   }
@@ -41,5 +43,11 @@ $modularscale: (
     &.idle {
       color: var(--neutral-300);
     }
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    flex-direction: column;
   }
 }

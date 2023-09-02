@@ -5,7 +5,7 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
-  const { message } = req.body;
+  const { conversation } = req.body;
 
   const suggestionResponse = await openai.chat.completions.create({
     model: "gpt-4",
@@ -13,12 +13,9 @@ export default async function handler(req, res) {
     messages: [
       {
         role: "system",
-        content: `You are a friendly AI that responds to people's questions with brevity, but in full sentences`,
+        content: `You are a friendly AI that responds to people's questions with brevity, but in full sentences.`,
       },
-      {
-        role: "user",
-        content: message,
-      },
+      ...conversation,
     ],
   });
 
