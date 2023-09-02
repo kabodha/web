@@ -4,14 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import FormData from "form-data";
 import cx from "classnames";
-import { current, produce } from "immer";
 import { pipe } from "fp-ts/lib/function";
 import * as RAR from "fp-ts/ReadonlyArray";
 import * as O from "fp-ts/Option";
 import { useEffectOnce } from "react-use";
 
-const voiceID = "Yko7PKHZNXotIFUBG7I9";
-const xiApiKey = "51f9195713d809aeb79898f8ab0aedb1";
+const voiceID = "E83lgkQqxj1opeAo4NBd";
+const xiApiKey = "7b66194ad92fbf68e973456def29f632";
 
 export default function Index() {
   const mediaRecorder = useRef(null);
@@ -159,17 +158,19 @@ export default function Index() {
         <link rel="icon" href="/favicon.png" />
       </Head>
 
-      <div className={styles.controls}>
+      <div
+        className={styles.controls}
+        onPointerDown={() => {
+          startRecording();
+        }}
+        onPointerUp={() => {
+          stopRecording();
+        }}
+      >
         <div
           className={cx(styles.record, { [styles.active]: record })}
           type="button"
           disabled={!record}
-          onMouseDown={() => {
-            startRecording();
-          }}
-          onMouseUp={() => {
-            stopRecording();
-          }}
         />
       </div>
 
