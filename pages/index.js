@@ -8,14 +8,14 @@ import { pipe } from "fp-ts/lib/function";
 import * as RAR from "fp-ts/ReadonlyArray";
 import * as O from "fp-ts/Option";
 import { useEffectOnce } from "react-use";
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 const voiceID = process.env.NEXT_PUBLIC_VOICE_ID;
 const xiApiKey = process.env.NEXT_PUBLIC_ELEVEN_LABS_KEY;
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY,
-  dangerouslyAllowBrowser: true
+  dangerouslyAllowBrowser: true,
 });
 
 export default function Index() {
@@ -25,14 +25,12 @@ export default function Index() {
   const [blobURL, setBlobURL] = useState("");
   const [conversation, setConversation] = useState([]);
   const [chatCompleted, setChatCompleted] = useState(false);
-  const [assistantMessage, setAssistantMessage] = useState('');
+  const [assistantMessage, setAssistantMessage] = useState("");
   const [audioPlaying, setAudioPlaying] = useState(false);
-  const [fullAssistantMessage, setFullAssistantMessage] = useState('');
+  const [fullAssistantMessage, setFullAssistantMessage] = useState("");
   const [userMessageStreaming, setUserMessageStreaming] = useState(false);
   const [userMessageStreamed, setUserMessageStreamed] = useState(false);
   const [assistantMessageFetched, setAssistantMessageFetched] = useState(false);
-
-
 
   const recentUserMessage = pipe(
     conversation,
@@ -70,69 +68,84 @@ export default function Index() {
   };
 
   useEffectOnce(() => {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-      mediaRecorder.current = new MediaRecorder(stream);
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        mediaRecorder.current = new MediaRecorder(stream);
 
-      mediaRecorder.current.ondataavailable = async (e) => {
-        const url = URL.createObjectURL(e.data);
+        mediaRecorder.current.ondataavailable = async (e) => {
+          const url = URL.createObjectURL(e.data);
 
-        setBlobURL(url);
+          setBlobURL(url);
 
-        let file = new Blob([e.data], { type: "audio/webm" });
-        const model = "whisper-1";
+          let file = new Blob([e.data], { type: "audio/webm" });
+          const model = "whisper-1";
 
-        try {
-          const formData = new FormData();
-          formData.append("file", file, "audio.webm");
-          formData.append("model", model);
-          formData.append("language", "en")
+          try {
+            const formData = new FormData();
+            formData.append("file", file, "audio.webm");
+            formData.append("model", model);
+            formData.append("language", "en");
 
-          const whisperResponse = await axios.post(
-            "https://api.openai.com/v1/audio/transcriptions",
-            formData,
-            {
-              headers: {
-                "Content-Type": "multipart/form-data",
-                Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_KEY}`,
-              },
-            }
-          );
-
-          setConversation((prevConversation) => {
-            const newConversation = [
-              ...prevConversation,
+            const whisperResponse = await axios.post(
+              "https://api.openai.com/v1/audio/transcriptions",
+              formData,
               {
-                role: "user",
-                content: whisperResponse.data.text,
-              },
-            ];
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                  Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_KEY}`,
+                },
+              }
+            );
 
-            // Trigger chat completion immediately after updating the conversation
-            if (newConversation[newConversation.length - 1].role === "user") {
-              const main = async () => {
-                console.log("Calling OpenAI Chat completion with conversation - ", newConversation)
-                const response = await openai.chat.completions.create({
-                  model: 'gpt-3.5-turbo',
-                  messages: newConversation.map(message => ({ role: message.role, content: message.content })),
-                });
-                const assistantResponse = response.choices[0]?.message?.content || '';
-                setFullAssistantMessage(assistantResponse); // Store the full message
-                setChatCompleted(true);
-              };
-              main();
-            }
+            setConversation((prevConversation) => {
+              const newConversation = [
+                ...prevConversation,
+                {
+                  role: "user",
+                  content: whisperResponse.data.text,
+                },
+              ];
 
-            return newConversation;
-          });
-        } catch (error) {
-          console.error(error);
-        }
-      };
-    });
+              // Trigger chat completion immediately after updating the conversation
+              if (newConversation[newConversation.length - 1].role === "user") {
+                const main = async () => {
+                  console.log(
+                    "Calling OpenAI Chat completion with conversation - ",
+                    newConversation
+                  );
+                  const response = await openai.chat.completions.create({
+                    model: "gpt-3.5-turbo",
+                    messages: newConversation.map((message) => ({
+                      role: message.role,
+                      content: message.content,
+                    })),
+                  });
+                  const assistantResponse =
+                    response.choices[0]?.message?.content || "";
+                  setFullAssistantMessage(assistantResponse); // Store the full message
+                  setChatCompleted(true);
+                };
+                main();
+              }
+
+              return newConversation;
+            });
+          } catch (error) {
+            console.error(error);
+          }
+        };
+      });
+    } else {
+      alert("sup dog");
+    }
   });
 
   useEffect(() => {
-    if (O.isSome(recentUserMessage) && !userMessageStreaming && !userMessageStreamed) {
+    if (
+      O.isSome(recentUserMessage) &&
+      !userMessageStreaming &&
+      !userMessageStreamed
+    ) {
       setUserMessageStreaming(true);
       const streamText = async () => {
         let i = 0;
@@ -141,7 +154,10 @@ export default function Index() {
             const partialMessage = recentUserMessage.value.slice(0, i + 1);
             setConversation((prevConversation) => {
               // If the last message is a user message, replace it with the new partial message
-              if (prevConversation.length > 0 && prevConversation[prevConversation.length - 1].role === "user") {
+              if (
+                prevConversation.length > 0 &&
+                prevConversation[prevConversation.length - 1].role === "user"
+              ) {
                 return [
                   ...prevConversation.slice(0, prevConversation.length - 1),
                   {
@@ -205,7 +221,7 @@ export default function Index() {
             }),
           }
         );
-      
+
         const reader = response.body.getReader();
         let chunks = [];
         return reader.read().then(function process({ done, value }) {
@@ -231,7 +247,7 @@ export default function Index() {
       };
 
       let resolveAudioPlay;
-      const audioPlayPromise = new Promise(resolve => {
+      const audioPlayPromise = new Promise((resolve) => {
         resolveAudioPlay = resolve;
       });
       const streamText = async () => {
@@ -240,7 +256,10 @@ export default function Index() {
           const partialMessage = fullAssistantMessage.slice(0, i + 1);
           setConversation((prevConversation) => {
             // If the last message is an assistant message, replace it with the new partial message
-            if (prevConversation.length > 0 && prevConversation[prevConversation.length - 1].role === "assistant") {
+            if (
+              prevConversation.length > 0 &&
+              prevConversation[prevConversation.length - 1].role === "assistant"
+            ) {
               return [
                 ...prevConversation.slice(0, prevConversation.length - 1),
                 {
@@ -260,13 +279,21 @@ export default function Index() {
               ];
             }
           });
-          await new Promise(resolve => setTimeout(resolve, 50)); // delay between each letter
+          await new Promise((resolve) => setTimeout(resolve, 50)); // delay between each letter
         }
       };
 
       Promise.all([fetchData()]);
     }
-  }, [chatCompleted, currentTurn, recentUserMessage, audioPlaying, fullAssistantMessage]);
+  }, [
+    chatCompleted,
+    currentTurn,
+    recentUserMessage,
+    audioPlaying,
+    fullAssistantMessage,
+    userMessageStreamed,
+    assistantMessageFetched,
+  ]);
 
   useEffect(() => {
     if (O.isSome(recentUserMessage) && currentTurn === "user") {
@@ -283,20 +310,25 @@ export default function Index() {
 
       <div
         className={cx(styles.controls, { [styles.speaking]: audioPlaying })}
-        onPointerDown={() => {
-          startRecording();
-        }}
-        onPointerUp={() => {
-          stopRecording();
-        }}
+        onTouchStart={startRecording}
+        onTouchEnd={stopRecording}
+        onMouseDown={startRecording}
+        onMouseUp={stopRecording}
       >
         <div
-          className={cx(styles.record, { [styles.active]: record, [styles.speaking]: audioPlaying })}
+          className={cx(styles.record, {
+            [styles.active]: record,
+            [styles.speaking]: audioPlaying,
+          })}
           type="button"
           disabled={!record}
         />
         <div className={cx(styles.copy, { [styles.speaking]: audioPlaying })}>
-          {record ? "Listening" : (audioPlaying ? "Please wait, the AI is speaking." : "Hold to speak")}
+          {record
+            ? "Listening"
+            : audioPlaying
+            ? "Please wait, the AI is speaking."
+            : "Hold to speak"}
         </div>
       </div>
 
