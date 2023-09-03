@@ -37,12 +37,21 @@ $modularscale: (
         transform: scale(1.5);
         transition: transform 0.1s ease-in-out;
       }
+
+      &.speaking {
+        background: var(--green-500);
+        transform: scale(1.5);
+        transition: transform 0.1s ease-in-out;
+      }
     }
 
     .copy {
       color: var(--neutral-300);
       font-family: franklin;
       transform: translateY(-3.5px);
+      &.speaking {
+        content: "Please wait, the AI is speaking.";
+      }
     }
   }
 
