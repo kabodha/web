@@ -47,7 +47,7 @@ export const RootMachine = createMachine(
     },
     tsTypes: {} as import("./root.typegen").Typegen0,
     states: {
-      tts: {
+      textToSpeech: {
         invoke: {
           src: (context) => {
             const { conversation } = context;
@@ -95,6 +95,7 @@ export const RootMachine = createMachine(
           },
         },
       },
+      streamChat: {},
       "/api/chat": {
         invoke: {
           src: (context) => {
@@ -104,10 +105,12 @@ export const RootMachine = createMachine(
               .post("/api/chat", {
                 conversation: conversation,
               })
-              .then((response) => response.data);
+              .then((response) => {
+                return response.data;
+              });
           },
           onDone: {
-            target: "tts",
+            target: "streamChat",
             actions: [
               "consoleLogContext",
               assign<Context, any>({

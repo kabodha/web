@@ -9,7 +9,6 @@ import { useRootMachine } from "../hooks/useRootMachine";
 import { startRecording, stopRecording } from "../utils/events";
 import { useSelector } from "@xstate/react";
 import { Player } from "../components/player";
-import { useKey } from "react-use";
 
 export default function Index() {
   const rootMachine = useRootMachine();
