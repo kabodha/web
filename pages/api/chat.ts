@@ -8,8 +8,7 @@ export default async function handler(req, res) {
   const { conversation } = req.body;
 
   const suggestionResponse = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
-    temperature: 0,
+    model: "gpt-4",
     messages: [
       {
         role: "system",
@@ -24,5 +23,5 @@ export default async function handler(req, res) {
     message: { content: generation },
   } = choices[0];
 
-  res.status(200).json({ message: generation });
+  res.status(200).json({ role: "assistant", content: generation });
 }

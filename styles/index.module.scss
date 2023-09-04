@@ -32,7 +32,7 @@ $modularscale: (
       border-radius: 50%;
       cursor: pointer;
 
-      &.active {
+      &.recording {
         background: var(--red-500);
         transform: scale(1.5);
         transition: transform 0.1s ease-in-out;
@@ -49,9 +49,6 @@ $modularscale: (
       color: var(--neutral-300);
       font-family: franklin;
       transform: translateY(-3.5px);
-      &.speaking {
-        content: "Please wait, the AI is speaking.";
-      }
     }
   }
 
