@@ -109,16 +109,19 @@ export default function Index() {
               // Trigger chat completion immediately after updating the conversation
               if (newConversation[newConversation.length - 1].role === "user") {
                 const main = async () => {
-                  console.log(
-                    "Calling OpenAI Chat completion with conversation - ",
-                    newConversation
-                  );
                   const response = await openai.chat.completions.create({
                     model: "gpt-3.5-turbo",
-                    messages: newConversation.map((message) => ({
-                      role: message.role,
-                      content: message.content,
-                    })),
+                    messages: [
+                      {
+                        role: "assistant",
+                        content:
+                          "You are a friendly AI that responds to people's questions with brevity, but in full sentences.",
+                      },
+                      ...newConversation.map((message) => ({
+                        role: message.role,
+                        content: message.content,
+                      })),
+                    ],
                   });
                   const assistantResponse =
                     response.choices[0]?.message?.content || "";
