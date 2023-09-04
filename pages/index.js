@@ -9,6 +9,7 @@ import { useRootMachine } from "../hooks/useRootMachine";
 import { startRecording, stopRecording } from "../utils/events";
 import { useSelector } from "@xstate/react";
 import { Player } from "../components/player";
+import { Writer } from "../components/writer";
 
 export default function Index() {
   const rootMachine = useRootMachine();
@@ -56,6 +57,7 @@ export default function Index() {
 
       <Recorder />
       <Player />
+      <Writer />
 
       <div
         className={cx(styles.controls, { [styles.speaking]: isSpeaking })}

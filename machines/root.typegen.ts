@@ -27,6 +27,7 @@ export interface Typegen0 {
       | "END_AUDIO_STREAM"
       | "IS_SPEAKING"
       | "SEND_MESSAGE"
+      | "SET_CHAT_STREAM_CONTENT"
       | "SET_MEDIA_RECORDER"
       | "START_RECORDING"
       | "STOP_RECORDING"
@@ -36,6 +37,6 @@ export interface Typegen0 {
   eventsCausingDelays: {};
   eventsCausingGuards: {};
   eventsCausingServices: {};
-  matchesStates: "/api/chat" | "active" | "streamChat" | "textToSpeech";
+  matchesStates: "/api/chat" | "active" | "textToSpeech";
   tags: never;
 }
