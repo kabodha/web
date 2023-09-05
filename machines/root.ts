@@ -206,7 +206,7 @@ export const RootMachine = createMachine(
                 mediaRecorder: (context) => {
                   const { mediaRecorder } = context;
 
-                  if (mediaRecorder) {
+                  if (mediaRecorder && mediaRecorder.state !== "recording") {
                     mediaRecorder.start();
                   }
 
@@ -233,39 +233,19 @@ export const RootMachine = createMachine(
               }),
             ],
           },
-          SEND_MESSAGE: [
-            {
-              target: "/api/chat",
-              cond: (_, event) => {
-                const { payload: message } = event;
-                const { role } = message as any;
-                return role === "user";
-              },
-              actions: [
-                "consoleLogContext",
-                assign<Context, sendMessage>({
-                  conversation: (context, event) => {
-                    const { conversation } = context;
-                    const { payload: message } = event;
-                    return [...conversation, message];
-                  },
-                }),
-              ],
-            },
-            {
-              actions: [
-                "consoleLogContext",
-                assign<Context, sendMessage>({
-                  conversation: (context, event) => {
-                    const { conversation } = context;
-                    const { payload: message } = event;
-                    return [...conversation, message];
-                  },
-                  chatStream: O.none,
-                }),
-              ],
-            },
-          ],
+          SEND_MESSAGE: {
+            target: "/api/chat",
+            actions: [
+              "consoleLogContext",
+              assign<Context, sendMessage>({
+                conversation: (context, event) => {
+                  const { conversation } = context;
+                  const { payload: message } = event;
+                  return [...conversation, message];
+                },
+              }),
+            ],
+          },
           END_AUDIO_STREAM: {
             actions: [
               "consoleLogContext",

@@ -9,6 +9,7 @@ import { useRootMachine } from "../hooks/useRootMachine";
 import { startRecording, stopRecording } from "../utils/events";
 import { useSelector } from "@xstate/react";
 import { Player } from "../components/player";
+import { Shortcuts } from "../components/shortcuts";
 
 export default function Index() {
   const rootMachine = useRootMachine();
@@ -61,13 +62,14 @@ export default function Index() {
 
       <Recorder />
       <Player />
+      <Shortcuts />
 
       <div
         className={cx(styles.controls, { [styles.speaking]: isSpeaking })}
-        onPointerDown={() => {
+        onTouchDown={() => {
           rootMachine.send(startRecording.create({}));
         }}
-        onPointerUp={() => {
+        onTouchUp={() => {
           rootMachine.send(stopRecording.create({}));
         }}
       >
@@ -84,7 +86,7 @@ export default function Index() {
             ? "Listening"
             : isSpeaking
             ? "Speaking"
-            : "Hold to speak"}
+            : "Hold spacebar to speak"}
         </div>
       </div>
 
