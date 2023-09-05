@@ -8,8 +8,8 @@ export interface Typegen0 {
       data: unknown;
       __tip: "See the XState TS docs to learn how to strongly type this.";
     };
-    "done.invoke.root.tts:invocation[0]": {
-      type: "done.invoke.root.tts:invocation[0]";
+    "done.invoke.root.textToSpeech:invocation[0]": {
+      type: "done.invoke.root.textToSpeech:invocation[0]";
       data: unknown;
       __tip: "See the XState TS docs to learn how to strongly type this.";
     };
@@ -31,11 +31,11 @@ export interface Typegen0 {
       | "START_RECORDING"
       | "STOP_RECORDING"
       | "done.invoke.root./api/chat:invocation[0]"
-      | "done.invoke.root.tts:invocation[0]";
+      | "done.invoke.root.textToSpeech:invocation[0]";
   };
   eventsCausingDelays: {};
   eventsCausingGuards: {};
   eventsCausingServices: {};
-  matchesStates: "/api/chat" | "active" | "tts";
+  matchesStates: "/api/chat" | "active" | "textToSpeech";
   tags: never;
 }

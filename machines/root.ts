@@ -14,10 +14,53 @@ import {
   stopRecording,
 } from "../utils/events";
 import { Context } from "../utils/schemas";
-import axios from "axios";
 import { pipe } from "fp-ts/lib/function";
 import * as RAR from "fp-ts/ReadonlyArray";
 import * as O from "fp-ts/Option";
+import { Observable } from "rxjs";
+
+const createStreamObservable = (conversation) => {
+  return new Observable((subscriber) => {
+    fetch("/api/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        conversation,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        const reader = response.body.getReader();
+
+        return new ReadableStream({
+          start: () => {
+            function push() {
+              reader.read().then(({ done, value }) => {
+                if (done) {
+                  subscriber.complete();
+                  return;
+                }
+
+                const text = new TextDecoder("utf-8").decode(value);
+                subscriber.next({ type: "DATA", payload: text });
+                push();
+              });
+            }
+
+            push();
+          },
+          cancel: () => {
+            reader.cancel();
+            subscriber.complete();
+          },
+        });
+      })
+      .catch((error) => {
+        subscriber.error(error);
+      });
+  });
+};
 
 type Events =
   | setMediaRecorder
@@ -38,6 +81,7 @@ export const RootMachine = createMachine(
       mediaRecorder: null,
       isRecording: false,
       audioStream: O.none,
+      chatStream: O.none,
       conversation: [],
       isSpeaking: false,
     },
@@ -47,7 +91,7 @@ export const RootMachine = createMachine(
     },
     tsTypes: {} as import("./root.typegen").Typegen0,
     states: {
-      tts: {
+      textToSpeech: {
         invoke: {
           src: (context) => {
             const { conversation } = context;
@@ -96,25 +140,45 @@ export const RootMachine = createMachine(
         },
       },
       "/api/chat": {
+        // @ts-ignore
         invoke: {
-          src: (context) => {
-            const { conversation } = context;
-
-            return axios
-              .post("/api/chat", {
-                conversation: conversation,
-              })
-              .then((response) => response.data);
-          },
+          src: (context) => createStreamObservable(context.conversation),
           onDone: {
-            target: "tts",
+            target: "active",
             actions: [
               "consoleLogContext",
               assign<Context, any>({
-                conversation: (context, event) => {
-                  const { conversation } = context;
-                  const { data: message } = event;
-                  return [...conversation, message];
+                // @ts-ignore
+                conversation: (context) => {
+                  const { conversation, chatStream } = context;
+
+                  // @ts-ignore
+                  if (O.isSome(chatStream)) {
+                    return [
+                      ...conversation,
+                      { role: "assistant", content: chatStream.value },
+                    ];
+                  }
+                },
+                chatStream: O.none,
+              }),
+            ],
+          },
+        },
+        on: {
+          // @ts-ignore
+          DATA: {
+            actions: [
+              assign<Context, any>({
+                chatStream: (context, event) => {
+                  const { chatStream } = context;
+                  const { payload: text } = event;
+
+                  if (O.isSome(chatStream)) {
+                    return O.some(`${chatStream.value}${text}`);
+                  } else {
+                    return O.some(text);
+                  }
                 },
               }),
             ],
@@ -169,19 +233,39 @@ export const RootMachine = createMachine(
               }),
             ],
           },
-          SEND_MESSAGE: {
-            target: "/api/chat",
-            actions: [
-              "consoleLogContext",
-              assign<Context, sendMessage>({
-                conversation: (context, event) => {
-                  const { conversation } = context;
-                  const { payload: message } = event;
-                  return [...conversation, message];
-                },
-              }),
-            ],
-          },
+          SEND_MESSAGE: [
+            {
+              target: "/api/chat",
+              cond: (_, event) => {
+                const { payload: message } = event;
+                const { role } = message as any;
+                return role === "user";
+              },
+              actions: [
+                "consoleLogContext",
+                assign<Context, sendMessage>({
+                  conversation: (context, event) => {
+                    const { conversation } = context;
+                    const { payload: message } = event;
+                    return [...conversation, message];
+                  },
+                }),
+              ],
+            },
+            {
+              actions: [
+                "consoleLogContext",
+                assign<Context, sendMessage>({
+                  conversation: (context, event) => {
+                    const { conversation } = context;
+                    const { payload: message } = event;
+                    return [...conversation, message];
+                  },
+                  chatStream: O.none,
+                }),
+              ],
+            },
+          ],
           END_AUDIO_STREAM: {
             actions: [
               "consoleLogContext",

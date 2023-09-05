@@ -57,6 +57,7 @@ $modularscale: (
     font-family: franklin;
     font-size: ms(3);
     width: ms(16);
+    white-space: pre-wrap;
 
     &.idle {
       color: var(--neutral-300);

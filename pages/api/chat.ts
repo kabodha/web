@@ -5,10 +5,12 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
-  const { conversation } = req.body;
+  const { body } = req;
+  const { conversation } = body;
 
-  const suggestionResponse = await openai.chat.completions.create({
+  const stream = await openai.chat.completions.create({
     model: "gpt-4",
+    stream: true,
     messages: [
       {
         role: "system",
@@ -18,10 +20,9 @@ export default async function handler(req, res) {
     ],
   });
 
-  const { choices } = suggestionResponse;
-  const {
-    message: { content: generation },
-  } = choices[0];
+  for await (const part of stream) {
+    res.write(part.choices[0]?.delta?.content || "");
+  }
 
-  res.status(200).json({ role: "assistant", content: generation });
+  res.end();
 }
