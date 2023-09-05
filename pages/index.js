@@ -9,6 +9,7 @@ import { useRootMachine } from "../hooks/useRootMachine";
 import { startRecording, stopRecording } from "../utils/events";
 import { useSelector } from "@xstate/react";
 import { Shortcuts } from "../components/shortcuts";
+import { motion } from "framer-motion";
 
 export default function Index() {
   const rootMachine = useRootMachine();
@@ -85,21 +86,51 @@ export default function Index() {
         </div>
       </div>
 
-      {O.isSome(recentUserMessage) && (
-        <div
-          className={cx(styles.message, {
-            [styles.idle]:
-              (O.isSome(recentAssistantMessage) && currentTurn === "user") ||
-              O.isSome(chatStream),
-          })}
-        >
-          {recentUserMessage.value}
-        </div>
-      )}
+      <div className={styles.messages}>
+        {O.isSome(recentUserMessage) && (
+          <div
+            className={cx(styles.message, {
+              [styles.idle]:
+                (O.isSome(recentAssistantMessage) && currentTurn === "user") ||
+                O.isSome(chatStream),
+            })}
+          >
+            {recentUserMessage.value.split(" ").map((word, index) => (
+              <motion.span
+                key={`${word}-${index}`}
+                className={styles.word}
+                initial={{ opacity: 0, display: "none" }}
+                animate={{ opacity: 1, display: "flex" }}
+                transition={{
+                  delay: 0.05 * index,
+                }}
+              >
+                {word}
+              </motion.span>
+            ))}
+          </div>
+        )}
 
-      {O.isSome(recentAssistantMessage) && currentTurn === "user" && (
-        <div className={styles.message}>{recentAssistantMessage.value}</div>
-      )}
+        {O.isSome(recentAssistantMessage) && currentTurn === "user" ? (
+          <div className={styles.message}>
+            {recentAssistantMessage.value.split(" ").map((word, index) => (
+              <motion.span
+                key={`${word}-${index}`}
+                className={styles.word}
+                initial={{ opacity: 0, display: "none" }}
+                animate={{ opacity: 1, display: "flex" }}
+                transition={{
+                  delay: 1.5,
+                }}
+              >
+                {word}
+              </motion.span>
+            ))}
+          </div>
+        ) : (
+          <div className={styles.message} />
+        )}
+      </div>
     </div>
   );
 }

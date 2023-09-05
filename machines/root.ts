@@ -253,12 +253,23 @@ export const RootMachine = createMachine(
                             sourceBuffer.addEventListener(
                               "updateend",
                               () => {
-                                sourceBuffer.appendBuffer(audioData.buffer);
+                                try {
+                                  sourceBuffer.appendBuffer(audioData.buffer);
+                                } catch (error) {
+                                  console.error(
+                                    "Error appending buffer:",
+                                    error
+                                  );
+                                }
                               },
                               { once: true }
                             );
                           } else {
-                            sourceBuffer.appendBuffer(audioData.buffer);
+                            try {
+                              sourceBuffer.appendBuffer(audioData.buffer);
+                            } catch (error) {
+                              console.error("Error appending buffer:", error);
+                            }
                           }
 
                           // @ts-ignore
@@ -291,7 +302,6 @@ export const RootMachine = createMachine(
             stability: 0.5,
             similarity_boost: true,
           },
-          optimize_streaming_latency: 0,
           xi_api_key: process.env.NEXT_PUBLIC_ELEVEN_LABS_KEY,
         };
         // @ts-ignore
