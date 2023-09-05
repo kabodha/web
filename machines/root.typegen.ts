@@ -25,6 +25,7 @@ export interface Typegen0 {
       | "STOP_RECORDING"
       | "done.invoke.root.completeChat:invocation[0]";
     pingSocket: "SEND_MESSAGE";
+    pongSocket: "done.invoke.root.completeChat:invocation[0]";
   };
   eventsCausingDelays: {};
   eventsCausingGuards: {};

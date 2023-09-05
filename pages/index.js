@@ -18,21 +18,14 @@ export default function Index() {
     (state) => state.context.conversation
   );
 
-  console.log(conversation);
+  const chatStream = useSelector(
+    rootMachine,
+    (state) => state.context.chatStream
+  );
 
   const isRecording = useSelector(
     rootMachine,
     (state) => state.context.isRecording
-  );
-
-  // const isSpeaking = useSelector(
-  //   rootMachine,
-  //   (state) => state.context.isSpeaking
-  // );
-
-  const chatStream = useSelector(
-    rootMachine,
-    (state) => state.context.chatStream
   );
 
   const isSpeaking = O.isSome(chatStream);

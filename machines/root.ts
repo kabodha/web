@@ -32,19 +32,27 @@ const createStreamObservable = (conversation) => {
     })
       .then((response) => {
         const reader = response.body.getReader();
+        let generation = "";
 
         return new ReadableStream({
           start: () => {
             function push() {
               reader.read().then(({ done, value }) => {
                 if (done) {
-                  subscriber.next({ type: "DATA", payload: "" });
+                  subscriber.next({ type: "DATA", payload: generation });
                   subscriber.complete();
                   return;
                 }
 
                 const text = new TextDecoder("utf-8").decode(value);
-                subscriber.next({ type: "DATA", payload: text });
+                generation = `${generation}${text}`;
+
+                if (generation.includes(" ")) {
+                  const [word, ...rest] = generation.split(" ");
+                  generation = rest.join(" ");
+                  subscriber.next({ type: "DATA", payload: word });
+                }
+
                 push();
               });
             }
@@ -78,7 +86,6 @@ export const RootMachine = createMachine(
       audioStream: null,
       chatStream: O.none,
       conversation: [],
-      isSpeaking: false,
       socket: webSocket(
         `wss://api.elevenlabs.io/v1/text-to-speech/${process.env.NEXT_PUBLIC_VOICE_ID}/stream-input?model_type=eleven_monolingual_v1`
       ),
@@ -99,6 +106,7 @@ export const RootMachine = createMachine(
               assign<Context, any>({
                 chatStream: O.none,
               }),
+              "pongSocket",
             ],
           },
         },
@@ -112,7 +120,7 @@ export const RootMachine = createMachine(
                   const { payload: text } = event;
 
                   socket.next({
-                    text: text === "" ? "" : `${text} `,
+                    text: `${text} `,
                     try_trigger_generation: true,
                   });
 
@@ -129,7 +137,7 @@ export const RootMachine = createMachine(
                     recentMessage.value.role === "assistant"
                   ) {
                     const prevText = recentMessage.value.content;
-                    const newText = `${prevText}${text}`;
+                    const newText = `${prevText} ${text}`;
 
                     return [
                       ...conversation.slice(0, -1),
@@ -223,6 +231,11 @@ export const RootMachine = createMachine(
 
                   mediaSource.addEventListener("sourceopen", () => {
                     sourceBuffer = mediaSource.addSourceBuffer("audio/mpeg");
+
+                    sourceBuffer.addEventListener("error", () => {
+                      const removeDuration = 5;
+                      sourceBuffer.remove(0, removeDuration);
+                    });
                   });
 
                   return socket
@@ -278,10 +291,19 @@ export const RootMachine = createMachine(
             stability: 0.5,
             similarity_boost: true,
           },
+          optimize_streaming_latency: 0,
           xi_api_key: process.env.NEXT_PUBLIC_ELEVEN_LABS_KEY,
         };
         // @ts-ignore
         socket.next(bosMessage);
+      },
+      pongSocket: (context) => {
+        const { socket } = context;
+
+        // @ts-ignore
+        socket.next({
+          text: "",
+        });
       },
     },
     services: {},
