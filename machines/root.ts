@@ -119,7 +119,7 @@ export const RootMachine = createMachine(
                   return O.some(text);
                 },
                 conversation: (context, event) => {
-                  const { conversation, chatStream } = context;
+                  const { conversation } = context;
                   const { payload: text } = event;
 
                   const recentMessage = pipe(conversation, RAR.last);
@@ -214,6 +214,17 @@ export const RootMachine = createMachine(
                 audioStream: (context) => {
                   const { socket } = context;
 
+                  let sourceBuffer;
+
+                  const mediaSource = new MediaSource();
+                  const audioElement = new Audio();
+                  audioElement.src = URL.createObjectURL(mediaSource);
+                  audioElement.play();
+
+                  mediaSource.addEventListener("sourceopen", () => {
+                    sourceBuffer = mediaSource.addSourceBuffer("audio/mpeg");
+                  });
+
                   return socket
                     .pipe(
                       concatMap((data) => {
@@ -221,15 +232,24 @@ export const RootMachine = createMachine(
                         const { audio, isFinal } = data;
 
                         if (!isFinal) {
-                          const audioElement = new Audio(
-                            `data:audio/mpeg;base64,${audio}`
+                          const audioData = Uint8Array.from(atob(audio), (c) =>
+                            c.charCodeAt(0)
                           );
 
-                          return new Promise((resolve, reject) => {
-                            audioElement.addEventListener("ended", resolve);
-                            audioElement.addEventListener("error", reject);
-                            audioElement.play().catch(reject);
-                          });
+                          if (sourceBuffer.updating) {
+                            sourceBuffer.addEventListener(
+                              "updateend",
+                              () => {
+                                sourceBuffer.appendBuffer(audioData.buffer);
+                              },
+                              { once: true }
+                            );
+                          } else {
+                            sourceBuffer.appendBuffer(audioData.buffer);
+                          }
+
+                          // @ts-ignore
+                          return new Promise((resolve) => resolve());
                         } else {
                           // @ts-ignore
                           return new Promise((resolve) => resolve());
@@ -260,7 +280,6 @@ export const RootMachine = createMachine(
           },
           xi_api_key: process.env.NEXT_PUBLIC_ELEVEN_LABS_KEY,
         };
-
         // @ts-ignore
         socket.next(bosMessage);
       },
