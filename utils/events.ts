@@ -27,11 +27,3 @@ export const isSpeaking = event("IS_SPEAKING")(
   })
 );
 export interface isSpeaking extends t.TypeOf<typeof isSpeaking> {}
-
-export const setChatStreamContent = event("SET_CHAT_STREAM_CONTENT")(
-  t.type({
-    content: t.string,
-  })
-);
-export interface setChatStreamContent
-  extends t.TypeOf<typeof setChatStreamContent> {}

@@ -5,7 +5,8 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
-  const { conversation } = req.body;
+  const { body } = req;
+  const { conversation } = body;
 
   const stream = await openai.chat.completions.create({
     model: "gpt-4",

@@ -11,7 +11,6 @@ export const Context = t.type({
   isRecording: t.boolean,
   audioStream: t.unknown,
   chatStream: t.unknown,
-  chatStreamContent: t.string,
   isSpeaking: t.boolean,
 });
 export interface Context extends t.TypeOf<typeof Context> {}

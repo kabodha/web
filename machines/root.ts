@@ -9,17 +9,58 @@ import {
   endAudioStream,
   isSpeaking,
   sendMessage,
-  setChatStreamContent,
   setMediaRecorder,
   startRecording,
   stopRecording,
 } from "../utils/events";
 import { Context } from "../utils/schemas";
-import axios from "axios";
 import { pipe } from "fp-ts/lib/function";
 import * as RAR from "fp-ts/ReadonlyArray";
 import * as O from "fp-ts/Option";
-import { Readable } from "stream";
+import { Observable } from "rxjs";
+
+const createStreamObservable = (conversation) => {
+  return new Observable((subscriber) => {
+    fetch("/api/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        conversation,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        const reader = response.body.getReader();
+
+        return new ReadableStream({
+          start: () => {
+            function push() {
+              reader.read().then(({ done, value }) => {
+                if (done) {
+                  subscriber.complete();
+                  return;
+                }
+
+                const text = new TextDecoder("utf-8").decode(value);
+                subscriber.next({ type: "DATA", payload: text });
+                push();
+              });
+            }
+
+            push();
+          },
+          cancel: () => {
+            reader.cancel();
+            subscriber.complete();
+          },
+        });
+      })
+      .catch((error) => {
+        subscriber.error(error);
+      });
+  });
+};
 
 type Events =
   | setMediaRecorder
@@ -27,8 +68,7 @@ type Events =
   | stopRecording
   | sendMessage
   | endAudioStream
-  | isSpeaking
-  | setChatStreamContent;
+  | isSpeaking;
 
 const consoleLogContext = actions.log<Context, any>();
 
@@ -42,7 +82,6 @@ export const RootMachine = createMachine(
       isRecording: false,
       audioStream: O.none,
       chatStream: O.none,
-      chatStreamContent: "",
       conversation: [],
       isSpeaking: false,
     },
@@ -101,35 +140,46 @@ export const RootMachine = createMachine(
         },
       },
       "/api/chat": {
+        // @ts-ignore
         invoke: {
-          src: (context) => {
-            const { conversation } = context;
-
-            return axios({
-              method: "post",
-              url: "/api/chat",
-              data: {
-                conversation,
-              },
-              responseType: "stream",
-            }).then((response) => {
-              return response.data;
-            });
-          },
+          src: (context) => createStreamObservable(context.conversation),
           onDone: {
             target: "active",
             actions: [
               "consoleLogContext",
               assign<Context, any>({
-                chatStream: (_, event) => {
-                  const { data } = event;
-                  return O.some(data);
+                // @ts-ignore
+                conversation: (context) => {
+                  const { conversation, chatStream } = context;
+
+                  // @ts-ignore
+                  if (O.isSome(chatStream)) {
+                    return [
+                      ...conversation,
+                      { role: "assistant", content: chatStream.value },
+                    ];
+                  }
                 },
-                // conversation: (context, event) => {
-                //   const { conversation } = context;
-                //   const { data: message } = event;
-                //   return [...conversation, message];
-                // },
+                chatStream: O.none,
+              }),
+            ],
+          },
+        },
+        on: {
+          // @ts-ignore
+          DATA: {
+            actions: [
+              assign<Context, any>({
+                chatStream: (context, event) => {
+                  const { chatStream } = context;
+                  const { payload: text } = event;
+
+                  if (O.isSome(chatStream)) {
+                    return O.some(`${chatStream.value}${text}`);
+                  } else {
+                    return O.some(text);
+                  }
+                },
               }),
             ],
           },
@@ -232,18 +282,6 @@ export const RootMachine = createMachine(
                   const { payload } = event;
                   const { value } = payload as any;
                   return value;
-                },
-              }),
-            ],
-          },
-          SET_CHAT_STREAM_CONTENT: {
-            actions: [
-              "consoleLogContext",
-              assign<Context, setChatStreamContent>({
-                chatStreamContent: (_, event) => {
-                  const { payload } = event;
-                  const { content } = payload as any;
-                  return content;
                 },
               }),
             ],

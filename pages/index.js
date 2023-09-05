@@ -9,7 +9,6 @@ import { useRootMachine } from "../hooks/useRootMachine";
 import { startRecording, stopRecording } from "../utils/events";
 import { useSelector } from "@xstate/react";
 import { Player } from "../components/player";
-import { Writer } from "../components/writer";
 
 export default function Index() {
   const rootMachine = useRootMachine();
@@ -27,6 +26,11 @@ export default function Index() {
   const isSpeaking = useSelector(
     rootMachine,
     (state) => state.context.isSpeaking
+  );
+
+  const chatStream = useSelector(
+    rootMachine,
+    (state) => state.context.chatStream
   );
 
   const recentUserMessage = pipe(
@@ -57,7 +61,6 @@ export default function Index() {
 
       <Recorder />
       <Player />
-      <Writer />
 
       <div
         className={cx(styles.controls, { [styles.speaking]: isSpeaking })}
@@ -89,7 +92,8 @@ export default function Index() {
         <div
           className={cx(styles.message, {
             [styles.idle]:
-              O.isSome(recentAssistantMessage) && currentTurn === "user",
+              (O.isSome(recentAssistantMessage) && currentTurn === "user") ||
+              O.isSome(chatStream),
           })}
         >
           {recentUserMessage.value}
@@ -98,6 +102,10 @@ export default function Index() {
 
       {O.isSome(recentAssistantMessage) && currentTurn === "user" && (
         <div className={styles.message}>{recentAssistantMessage.value}</div>
+      )}
+
+      {O.isSome(chatStream) && (
+        <div className={styles.message}>{chatStream.value}</div>
       )}
     </div>
   );
