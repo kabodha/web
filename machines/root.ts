@@ -6,18 +6,18 @@ import {
   assign,
 } from "xstate";
 import {
-  endAudioStream,
-  isSpeaking,
   sendMessage,
   setMediaRecorder,
   startRecording,
   stopRecording,
 } from "../utils/events";
 import { Context } from "../utils/schemas";
-import { pipe } from "fp-ts/lib/function";
-import * as RAR from "fp-ts/ReadonlyArray";
 import * as O from "fp-ts/Option";
 import { Observable } from "rxjs";
+import { webSocket } from "rxjs/webSocket";
+import { concatMap } from "rxjs/operators";
+import { pipe } from "fp-ts/lib/function";
+import * as RAR from "fp-ts/ReadonlyArray";
 
 const createStreamObservable = (conversation) => {
   return new Observable((subscriber) => {
@@ -38,6 +38,7 @@ const createStreamObservable = (conversation) => {
             function push() {
               reader.read().then(({ done, value }) => {
                 if (done) {
+                  subscriber.next({ type: "DATA", payload: "" });
                   subscriber.complete();
                   return;
                 }
@@ -62,13 +63,7 @@ const createStreamObservable = (conversation) => {
   });
 };
 
-type Events =
-  | setMediaRecorder
-  | startRecording
-  | stopRecording
-  | sendMessage
-  | endAudioStream
-  | isSpeaking;
+type Events = setMediaRecorder | startRecording | stopRecording | sendMessage;
 
 const consoleLogContext = actions.log<Context, any>();
 
@@ -80,10 +75,13 @@ export const RootMachine = createMachine(
     context: {
       mediaRecorder: null,
       isRecording: false,
-      audioStream: O.none,
+      audioStream: null,
       chatStream: O.none,
       conversation: [],
       isSpeaking: false,
+      socket: webSocket(
+        `wss://api.elevenlabs.io/v1/text-to-speech/${process.env.NEXT_PUBLIC_VOICE_ID}/stream-input?model_type=eleven_monolingual_v1`
+      ),
     },
     schema: {
       context: {} as Context,
@@ -91,56 +89,7 @@ export const RootMachine = createMachine(
     },
     tsTypes: {} as import("./root.typegen").Typegen0,
     states: {
-      textToSpeech: {
-        invoke: {
-          src: (context) => {
-            const { conversation } = context;
-
-            const recentAssistantMessage = pipe(
-              conversation,
-              RAR.findLast((message) => message.role === "assistant"),
-              O.map((message) => message.content)
-            );
-
-            if (O.isSome(recentAssistantMessage)) {
-              return fetch(
-                `https://api.elevenlabs.io/v1/text-to-speech/${process.env.NEXT_PUBLIC_VOICE_ID}/stream`,
-                {
-                  method: "POST",
-                  headers: {
-                    accept: "audio/mpeg",
-                    "xi-api-key": process.env.NEXT_PUBLIC_ELEVEN_LABS_KEY,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    text: recentAssistantMessage.value,
-                    model_id: "eleven_monolingual_v1",
-                    optimize_streaming_latency: 4,
-                    voice_settings: {
-                      stability: 0.5,
-                      similarity_boost: 0.5,
-                    },
-                  }),
-                }
-              );
-            }
-          },
-          onDone: {
-            target: "active",
-            actions: [
-              "consoleLogContext",
-              assign<Context, any>({
-                audioStream: (_, event) => {
-                  const { data } = event;
-                  return O.some(data);
-                },
-              }),
-            ],
-          },
-        },
-      },
-      "/api/chat": {
-        // @ts-ignore
+      completeChat: {
         invoke: {
           src: (context) => createStreamObservable(context.conversation),
           onDone: {
@@ -148,18 +97,6 @@ export const RootMachine = createMachine(
             actions: [
               "consoleLogContext",
               assign<Context, any>({
-                // @ts-ignore
-                conversation: (context) => {
-                  const { conversation, chatStream } = context;
-
-                  // @ts-ignore
-                  if (O.isSome(chatStream)) {
-                    return [
-                      ...conversation,
-                      { role: "assistant", content: chatStream.value },
-                    ];
-                  }
-                },
                 chatStream: O.none,
               }),
             ],
@@ -171,13 +108,38 @@ export const RootMachine = createMachine(
             actions: [
               assign<Context, any>({
                 chatStream: (context, event) => {
-                  const { chatStream } = context;
+                  const { socket } = context;
                   const { payload: text } = event;
 
-                  if (O.isSome(chatStream)) {
-                    return O.some(`${chatStream.value}${text}`);
+                  socket.next({
+                    text: text === "" ? "" : `${text} `,
+                    try_trigger_generation: true,
+                  });
+
+                  return O.some(text);
+                },
+                conversation: (context, event) => {
+                  const { conversation, chatStream } = context;
+                  const { payload: text } = event;
+
+                  const recentMessage = pipe(conversation, RAR.last);
+
+                  if (
+                    O.isSome(recentMessage) &&
+                    recentMessage.value.role === "assistant"
+                  ) {
+                    const prevText = recentMessage.value.content;
+                    const newText = `${prevText}${text}`;
+
+                    return [
+                      ...conversation.slice(0, -1),
+                      { role: "assistant", content: newText },
+                    ];
                   } else {
-                    return O.some(text);
+                    return [
+                      ...conversation,
+                      { role: "assistant", content: text },
+                    ];
                   }
                 },
               }),
@@ -199,23 +161,29 @@ export const RootMachine = createMachine(
               }),
             ],
           },
-          START_RECORDING: {
-            actions: [
-              "consoleLogContext",
-              assign<Context, startRecording>({
-                mediaRecorder: (context) => {
-                  const { mediaRecorder } = context;
+          START_RECORDING: [
+            {
+              cond: (context) => {
+                const { isRecording } = context;
+                return !isRecording;
+              },
+              actions: [
+                "consoleLogContext",
+                assign<Context, startRecording>({
+                  mediaRecorder: (context) => {
+                    const { mediaRecorder } = context;
 
-                  if (mediaRecorder && mediaRecorder.state !== "recording") {
-                    mediaRecorder.start();
-                  }
+                    if (mediaRecorder) {
+                      mediaRecorder.start();
+                    }
 
-                  return mediaRecorder;
-                },
-                isRecording: true,
-              }),
-            ],
-          },
+                    return mediaRecorder;
+                  },
+                  isRecording: true,
+                }),
+              ],
+            },
+          ],
           STOP_RECORDING: {
             actions: [
               "consoleLogContext",
@@ -234,7 +202,7 @@ export const RootMachine = createMachine(
             ],
           },
           SEND_MESSAGE: {
-            target: "/api/chat",
+            target: "completeChat",
             actions: [
               "consoleLogContext",
               assign<Context, sendMessage>({
@@ -243,27 +211,35 @@ export const RootMachine = createMachine(
                   const { payload: message } = event;
                   return [...conversation, message];
                 },
-              }),
-            ],
-          },
-          END_AUDIO_STREAM: {
-            actions: [
-              "consoleLogContext",
-              assign<Context, endAudioStream>({
-                audioStream: O.none,
-              }),
-            ],
-          },
-          IS_SPEAKING: {
-            actions: [
-              "consoleLogContext",
-              assign<Context, isSpeaking>({
-                isSpeaking: (_, event) => {
-                  const { payload } = event;
-                  const { value } = payload as any;
-                  return value;
+                audioStream: (context) => {
+                  const { socket } = context;
+
+                  return socket
+                    .pipe(
+                      concatMap((data) => {
+                        // @ts-ignore
+                        const { audio, isFinal } = data;
+
+                        if (!isFinal) {
+                          const audioElement = new Audio(
+                            `data:audio/mpeg;base64,${audio}`
+                          );
+
+                          return new Promise((resolve, reject) => {
+                            audioElement.addEventListener("ended", resolve);
+                            audioElement.addEventListener("error", reject);
+                            audioElement.play().catch(reject);
+                          });
+                        } else {
+                          // @ts-ignore
+                          return new Promise((resolve) => resolve());
+                        }
+                      })
+                    )
+                    .subscribe();
                 },
               }),
+              "pingSocket",
             ],
           },
         },
@@ -273,6 +249,21 @@ export const RootMachine = createMachine(
   {
     actions: {
       consoleLogContext,
+      pingSocket: (context) => {
+        const { socket } = context;
+
+        const bosMessage = {
+          text: " ",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: true,
+          },
+          xi_api_key: process.env.NEXT_PUBLIC_ELEVEN_LABS_KEY,
+        };
+
+        // @ts-ignore
+        socket.next(bosMessage);
+      },
     },
     services: {},
   }

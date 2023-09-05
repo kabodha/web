@@ -17,13 +17,3 @@ export interface stopRecording extends t.TypeOf<typeof stopRecording> {}
 
 export const sendMessage = event("SEND_MESSAGE")(Message);
 export interface sendMessage extends t.TypeOf<typeof sendMessage> {}
-
-export const endAudioStream = event("END_AUDIO_STREAM")();
-export interface endAudioStream extends t.TypeOf<typeof endAudioStream> {}
-
-export const isSpeaking = event("IS_SPEAKING")(
-  t.type({
-    value: t.boolean,
-  })
-);
-export interface isSpeaking extends t.TypeOf<typeof isSpeaking> {}

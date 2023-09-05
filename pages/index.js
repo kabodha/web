@@ -8,7 +8,6 @@ import { Recorder } from "../components/recorder";
 import { useRootMachine } from "../hooks/useRootMachine";
 import { startRecording, stopRecording } from "../utils/events";
 import { useSelector } from "@xstate/react";
-import { Player } from "../components/player";
 import { Shortcuts } from "../components/shortcuts";
 
 export default function Index() {
@@ -19,20 +18,24 @@ export default function Index() {
     (state) => state.context.conversation
   );
 
+  console.log(conversation);
+
   const isRecording = useSelector(
     rootMachine,
     (state) => state.context.isRecording
   );
 
-  const isSpeaking = useSelector(
-    rootMachine,
-    (state) => state.context.isSpeaking
-  );
+  // const isSpeaking = useSelector(
+  //   rootMachine,
+  //   (state) => state.context.isSpeaking
+  // );
 
   const chatStream = useSelector(
     rootMachine,
     (state) => state.context.chatStream
   );
+
+  const isSpeaking = O.isSome(chatStream);
 
   const recentUserMessage = pipe(
     conversation,
@@ -61,15 +64,14 @@ export default function Index() {
       </Head>
 
       <Recorder />
-      <Player />
       <Shortcuts />
 
       <div
         className={cx(styles.controls, { [styles.speaking]: isSpeaking })}
-        onTouchDown={() => {
+        onTouchStart={() => {
           rootMachine.send(startRecording.create({}));
         }}
-        onTouchUp={() => {
+        onTouchEnd={() => {
           rootMachine.send(stopRecording.create({}));
         }}
       >
@@ -81,7 +83,7 @@ export default function Index() {
           type="button"
           disabled={!isRecording}
         />
-        <div className={cx(styles.copy, { [styles.speaking]: isSpeaking })}>
+        <div className={styles.copy}>
           {isRecording
             ? "Listening"
             : isSpeaking
@@ -104,10 +106,6 @@ export default function Index() {
 
       {O.isSome(recentAssistantMessage) && currentTurn === "user" && (
         <div className={styles.message}>{recentAssistantMessage.value}</div>
-      )}
-
-      {O.isSome(chatStream) && (
-        <div className={styles.message}>{chatStream.value}</div>
       )}
     </div>
   );

@@ -24,6 +24,7 @@ $modularscale: (
     display: flex;
     flex-direction: row;
     gap: ms(0);
+    pointer-events: none;
 
     .record {
       width: ms(0);
