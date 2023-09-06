@@ -232,10 +232,10 @@ export const RootMachine = createMachine(
                   mediaSource.addEventListener("sourceopen", () => {
                     sourceBuffer = mediaSource.addSourceBuffer("audio/mpeg");
 
-                    sourceBuffer.addEventListener("error", () => {
-                      const removeDuration = 5;
-                      sourceBuffer.remove(0, removeDuration);
-                    });
+                    // sourceBuffer.addEventListener("error", () => {
+                    //   const removeDuration = 1;
+                    //   sourceBuffer.remove(0, removeDuration);
+                    // });
                   });
 
                   return socket
