@@ -43,19 +43,31 @@ export function Messages() {
   const durationToWord = useMemo(() => {
     const words = [];
     let lastWord = "";
+    let firstCharDuration = 0;
 
     meta.forEach(({ char, duration }) => {
       if (char === " ") {
         words.push({
           word: lastWord,
-          duration,
+          duration: firstCharDuration,
         });
 
         lastWord = "";
+        firstCharDuration = 0;
       } else {
+        if (lastWord === "") {
+          firstCharDuration = duration;
+        }
         lastWord += char;
       }
     });
+
+    if (lastWord !== "") {
+      words.push({
+        word: lastWord,
+        duration: firstCharDuration,
+      });
+    }
 
     return words;
   }, [meta]);
@@ -98,6 +110,8 @@ export function Messages() {
       setMeta([]);
     }
   }, [currentTurn]);
+
+  console.log(durationToWord);
 
   return (
     <div className={styles.messages}>

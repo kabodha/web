@@ -80,9 +80,18 @@ $modularscale: (
 
 @media (max-width: 768px) {
   .page {
-    .message {
+    .messages {
       width: 100%;
-      padding: ms(0);
+
+      .message {
+        padding: ms(0);
+        width: 100%;
+
+        .word {
+          font-size: ms(0);
+          height: ms(0) !important;
+        }
+      }
     }
   }
 }

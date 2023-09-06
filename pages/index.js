@@ -22,8 +22,6 @@ export default function Index() {
     (state) => state.context.isRecording
   );
 
-  const isSpeaking = O.isSome(chatStream);
-
   return (
     <div className={styles.page}>
       <Head>
@@ -36,7 +34,7 @@ export default function Index() {
       <Messages />
 
       <div
-        className={cx(styles.controls, { [styles.speaking]: isSpeaking })}
+        className={styles.controls}
         onTouchStart={() => {
           rootMachine.send(startRecording.create({}));
         }}
@@ -47,17 +45,12 @@ export default function Index() {
         <div
           className={cx(styles.record, {
             [styles.recording]: isRecording,
-            [styles.speaking]: isSpeaking,
           })}
           type="button"
           disabled={!isRecording}
         />
         <div className={styles.copy}>
-          {isRecording
-            ? "Listening"
-            : isSpeaking
-            ? "Speaking"
-            : "Hold spacebar to speak"}
+          {isRecording ? "Listening" : "Hold spacebar to speak"}
         </div>
       </div>
     </div>
