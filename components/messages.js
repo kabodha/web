@@ -61,10 +61,8 @@ export function Messages() {
   }, [meta]);
 
   useEffect(() => {
-    let subscription;
-
-    if (socket) {
-      subscription = socket
+    if (socket && currentTurn === "assistant") {
+      socket
         .pipe(
           concatMap((data) => {
             const { normalizedAlignment } = data;
@@ -93,13 +91,13 @@ export function Messages() {
         )
         .subscribe();
     }
+  }, [socket, currentTurn]);
 
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
-  }, [socket]);
+  useEffect(() => {
+    if (currentTurn === "assistant") {
+      setMeta([]);
+    }
+  }, [currentTurn]);
 
   return (
     <div className={styles.messages}>
