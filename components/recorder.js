@@ -12,10 +12,10 @@ export function Recorder() {
       const mediaRecorder = new MediaRecorder(stream);
 
       mediaRecorder.ondataavailable = async (event) => {
-        let file = new Blob([event.data], { type: "audio/webm" });
+        let file = new Blob([event.data], { type: "audio/mp4" });
 
         const formData = new FormData();
-        formData.append("file", file, "audio.webm");
+        formData.append("file", file, "audio.mp4");
         formData.append("model", "whisper-1");
         formData.append("language", "en");
 
