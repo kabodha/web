@@ -82,13 +82,13 @@ $modularscale: (
   .page {
     .messages {
       width: 100%;
+      padding: ms(0);
 
       .message {
-        padding: ms(0);
         width: 100%;
 
         .word {
-          font-size: ms(0);
+          font-size: ms(1);
           height: ms(0) !important;
         }
       }

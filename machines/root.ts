@@ -87,7 +87,7 @@ export const RootMachine = createMachine(
       chatStream: O.none,
       conversation: [],
       socket: webSocket(
-        `wss://api.elevenlabs.io/v1/text-to-speech/${process.env.NEXT_PUBLIC_VOICE_ID}/stream-input?model_type=eleven_monolingual_v1`
+        `wss://api.elevenlabs.io/v1/text-to-speech/${process.env.NEXT_PUBLIC_VOICE_ID}/stream-input?model_type=eleven_multilingual_v1`
       ),
     },
     schema: {

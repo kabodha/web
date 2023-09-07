@@ -74,9 +74,12 @@ export function Messages() {
 
   useEffect(() => {
     if (socket && currentTurn === "assistant") {
+      let chunkNumber = 0;
+
       socket
         .pipe(
           concatMap((data) => {
+            chunkNumber += 1;
             const { normalizedAlignment } = data;
 
             if (normalizedAlignment) {
@@ -92,7 +95,10 @@ export function Messages() {
                   ...prev,
                   ...chars.map((char, index) => ({
                     char,
-                    duration: charStartTimesMs[index] + max,
+                    duration:
+                      chunkNumber > 1
+                        ? charStartTimesMs[index] + max - 1050
+                        : charStartTimesMs[index] + max,
                   })),
                 ];
               });
@@ -110,8 +116,6 @@ export function Messages() {
       setMeta([]);
     }
   }, [currentTurn]);
-
-  console.log(durationToWord);
 
   return (
     <div className={styles.messages}>
