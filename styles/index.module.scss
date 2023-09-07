@@ -32,15 +32,10 @@ $modularscale: (
       background: var(--neutral-300);
       border-radius: 50%;
       cursor: pointer;
+      transition: transform 0.1s ease-in-out; // Moved here
 
       &.recording {
         background: var(--red-500);
-        transform: scale(1.5);
-        transition: transform 0.1s ease-in-out;
-      }
-
-      &.speaking {
-        background: var(--green-500);
         transform: scale(1.5);
         transition: transform 0.1s ease-in-out;
       }

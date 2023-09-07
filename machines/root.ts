@@ -21,7 +21,7 @@ import * as RAR from "fp-ts/ReadonlyArray";
 
 const createStreamObservable = (conversation) => {
   return new Observable((subscriber) => {
-    fetch("/api/chat", {
+    fetch("/chat", {
       method: "POST",
       body: JSON.stringify({
         conversation,
@@ -300,7 +300,7 @@ export const RootMachine = createMachine(
           text: " ",
           voice_settings: {
             stability: 0.5,
-            similarity_boost: true,
+            similarity_boost: 0.5,
           },
           xi_api_key: process.env.NEXT_PUBLIC_ELEVEN_LABS_KEY,
         };
