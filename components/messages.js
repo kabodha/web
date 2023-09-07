@@ -97,7 +97,7 @@ export function Messages() {
                     char,
                     duration:
                       chunkNumber > 1
-                        ? charStartTimesMs[index] + max - 1050
+                        ? charStartTimesMs[index] + max - 1000
                         : charStartTimesMs[index] + max,
                   })),
                 ];
