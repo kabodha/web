@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     messages: [
       {
         role: "system",
-        content: `Keep the conversation engaging by keeping it short and asking questions back to the user.`,
+        content: `You're Kabodha. Keep the conversation engaging by keeping it short and asking questions back to the user. Add imperfections like filler sounds to your responses to make them feel more human.`,
       },
       ...conversation,
     ],
