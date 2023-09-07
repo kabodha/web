@@ -21,7 +21,7 @@ import * as RAR from "fp-ts/ReadonlyArray";
 
 const createStreamObservable = (conversation) => {
   return new Observable((subscriber) => {
-    fetch("/api/chat", {
+    fetch("/chat", {
       method: "POST",
       body: JSON.stringify({
         conversation,
@@ -87,7 +87,7 @@ export const RootMachine = createMachine(
       chatStream: O.none,
       conversation: [],
       socket: webSocket(
-        `wss://api.elevenlabs.io/v1/text-to-speech/${process.env.NEXT_PUBLIC_VOICE_ID}/stream-input?model_type=eleven_monolingual_v1`
+        `wss://api.elevenlabs.io/v1/text-to-speech/${process.env.NEXT_PUBLIC_VOICE_ID}/stream-input?model_type=eleven_multilingual_v1`
       ),
     },
     schema: {
@@ -232,10 +232,10 @@ export const RootMachine = createMachine(
                   mediaSource.addEventListener("sourceopen", () => {
                     sourceBuffer = mediaSource.addSourceBuffer("audio/mpeg");
 
-                    sourceBuffer.addEventListener("error", () => {
-                      const removeDuration = 5;
-                      sourceBuffer.remove(0, removeDuration);
-                    });
+                    // sourceBuffer.addEventListener("error", () => {
+                    //   const removeDuration = 1;
+                    //   sourceBuffer.remove(0, removeDuration);
+                    // });
                   });
 
                   return socket
@@ -300,7 +300,7 @@ export const RootMachine = createMachine(
           text: " ",
           voice_settings: {
             stability: 0.5,
-            similarity_boost: true,
+            similarity_boost: 0.5,
           },
           xi_api_key: process.env.NEXT_PUBLIC_ELEVEN_LABS_KEY,
         };
