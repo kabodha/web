@@ -223,6 +223,7 @@ export const RootMachine = createMachine(
                   const { socket } = context;
 
                   let sourceBuffer;
+                  let appendQueue = [];
 
                   const mediaSource = new MediaSource();
                   const audioElement = new Audio();
@@ -231,6 +232,14 @@ export const RootMachine = createMachine(
 
                   mediaSource.addEventListener("sourceopen", () => {
                     sourceBuffer = mediaSource.addSourceBuffer("audio/mpeg");
+
+                    sourceBuffer.addEventListener("updateend", () => {
+                      if (appendQueue.length > 0) {
+                        const nextData = appendQueue.shift();
+                        // @ts-ignore
+                        sourceBuffer.appendBuffer(nextData.buffer);
+                      }
+                    });
 
                     // sourceBuffer.addEventListener("error", () => {
                     //   const removeDuration = 1;
@@ -249,27 +258,10 @@ export const RootMachine = createMachine(
                             c.charCodeAt(0)
                           );
 
-                          if (sourceBuffer.updating) {
-                            sourceBuffer.addEventListener(
-                              "updateend",
-                              () => {
-                                try {
-                                  sourceBuffer.appendBuffer(audioData.buffer);
-                                } catch (error) {
-                                  console.error(
-                                    "Error appending buffer:",
-                                    error
-                                  );
-                                }
-                              },
-                              { once: true }
-                            );
+                          if (sourceBuffer.updating || appendQueue.length > 0) {
+                            appendQueue.push(audioData);
                           } else {
-                            try {
-                              sourceBuffer.appendBuffer(audioData.buffer);
-                            } catch (error) {
-                              console.error("Error appending buffer:", error);
-                            }
+                            sourceBuffer.appendBuffer(audioData.buffer);
                           }
 
                           // @ts-ignore

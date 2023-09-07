@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     messages: [
       {
         role: "system",
-        content: `Keep the conversation engaging by asking questions back to the user.`,
+        content: `Keep the conversation engaging by keeping it short and asking questions back to the user.`,
       },
       ...conversation,
     ],

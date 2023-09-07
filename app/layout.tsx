@@ -15,6 +15,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/favicon.png" />
+        <meta property="og:image" content="/thumbnail.png" />
       </head>
       <body>{children}</body>
     </html>

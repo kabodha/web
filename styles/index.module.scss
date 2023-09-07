@@ -60,10 +60,10 @@ $modularscale: (
       flex-direction: row;
       flex-wrap: wrap;
       gap: ms(-4);
-      font-size: ms(3);
+      font-size: ms(2);
 
       .word {
-        height: ms(3);
+        height: ms(2);
       }
 
       &.idle {
